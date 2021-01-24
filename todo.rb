@@ -1,7 +1,15 @@
 require "sinatra"
-require "sinatra/reloader"
+require "sinatra/reloader" if development?
 require "tilt/erubis"
 
 get "/" do
-  erb "You have no lists.", layout: :layout
+  redirect "/lists"
+end
+
+get "/lists" do
+  @lists = [
+    {name: "Lunch Groceries", todos: []},
+    {name: "Dinner Groceries", todos: []}
+  ]
+  erb :lists, layout: :layout
 end
