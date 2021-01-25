@@ -42,7 +42,9 @@ post '/lists/:id' do
   list_id = params[:id].to_i
   @list = session[:lists][list_id]
   error = list_name_error(list_name)
-  if error
+  if list_name = session[:lists][list_id]
+    redirect "/lists/#{list_id}"
+  elsif error
     session[:error] = error
     erb :edit_list, layout: :layout
   else
@@ -50,6 +52,12 @@ post '/lists/:id' do
     session[:success] = "The list has been updated."
     redirect "/lists/#{list_id}"
   end
+end
+
+post '/lists/:id/delete' do
+  session[:lists].delete_at(params[:id].to_i)
+  session[:success] = "The list has been deleted."
+  redirect "/lists"
 end
 
 # Render the new list form
