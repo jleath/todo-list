@@ -39,25 +39,42 @@ end
 # Change the name of an existing list
 post '/lists/:id' do
   list_name = params[:list_name].strip
-  list_id = params[:id].to_i
-  @list = session[:lists][list_id]
+  @list_id = params[:id].to_i
+  @list = session[:lists][@list_id]
   error = list_name_error(list_name)
-  if list_name = session[:lists][list_id]
-    redirect "/lists/#{list_id}"
+  if list_name == @list[:name]
+    redirect "/lists/#{@list_id}"
   elsif error
     session[:error] = error
     erb :edit_list, layout: :layout
   else
     @list[:name] = list_name
     session[:success] = "The list has been updated."
-    redirect "/lists/#{list_id}"
+    redirect "/lists/#{@list_id}"
   end
 end
 
+# Delete a todo list
 post '/lists/:id/delete' do
   session[:lists].delete_at(params[:id].to_i)
   session[:success] = "The list has been deleted."
   redirect "/lists"
+end
+
+# add a todo list item
+post '/lists/:list_id/todos' do
+  @list_id = params[:list_id].to_i
+  @list = session[:lists][@list_id]
+  todo = params[:todo].strip
+  error = todo_name_error(todo)
+  if error
+    session[:error] = error
+    erb :list, layout: :layout
+  else
+    @list[:todos] << {name: todo, completed: false}
+    session[:success] = "'#{todo}' has been added to the list."
+    redirect "lists/#{@list_id}"
+  end
 end
 
 # Render the new list form
@@ -67,15 +84,15 @@ end
 
 # Render the single list view
 get '/lists/:id' do
-  list_id = params[:id].to_i
-  @list = session[:lists][list_id]
+  @list_id = params[:id].to_i
+  @list = session[:lists][@list_id]
   erb :list, layout: :layout
 end
 
 # Render edit list view
 get '/lists/:id/edit' do
-  list_id = params[:id].to_i
-  @list = session[:lists][list_id]
+  @list_id = params[:id].to_i
+  @list = session[:lists][@list_id]
   erb :edit_list, layout: :layout
 end
 
@@ -87,6 +104,14 @@ def list_name_error(name)
     'The list name must be between 1 and 100 characters in length.'
   elsif session[:lists].any? { |list| list[:name] == name }
     'The list name must be unique.'
+  else
+    nil
+  end
+end
+
+def todo_name_error(name)
+  if !(1..100).cover?(name.size)
+    'The todo name must be between 1 and 100 characters in length.'
   else
     nil
   end
