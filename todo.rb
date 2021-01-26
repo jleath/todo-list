@@ -12,6 +12,42 @@ before do
   session[:lists] ||= []
 end
 
+helpers do
+  def sort_lists(lists, &block)
+    complete_lists, incomplete_lists = partition_with_index(lists) do |list|
+      list_complete?(list)
+    end
+
+    incomplete_lists.each(&block)
+    complete_lists.each(&block)
+  end
+
+  def sort_todos(todos, &block)
+    complete_todos, incomplete_todos = partition_with_index(todos) do |todo|
+      todo[:completed]
+    end
+
+    incomplete_todos.each(&block)
+    complete_todos.each(&block)
+  end
+
+  def list_complete?(list)
+    list_size(list) > 0 && num_complete(list) == list_size(list)
+  end
+
+  def list_class(list)
+    "complete" if list_complete?(list)
+  end
+
+  def num_complete(list)
+    list[:todos].select { |todo| todo[:completed] }.size
+  end
+
+  def list_size(list)
+    list[:todos].size
+  end
+end
+
 get '/' do
   redirect '/lists'
 end
@@ -79,7 +115,14 @@ post '/lists/:list_id/todos/:todo_id/check' do
   todo = @list[:todos][params[:todo_id].to_i]
   todo[:completed] = (params[:completed] == "true" ? true : false)
   session[:success] = "'#{todo[:name]}' has been updated."
-  @list[:todos].sort! { |a, b| a[:completed].to_s <=> b[:completed].to_s }
+  redirect "/lists/#{@list_id}"
+end
+
+post '/lists/:list_id/complete_all' do
+  @list_id = params[:list_id].to_i
+  @list = session[:lists][@list_id]
+  @list[:todos].each { |todo| todo[:completed] = true }
+  session[:success] = "All todos have been completed."
   redirect "/lists/#{@list_id}"
 end
 
@@ -94,7 +137,6 @@ post '/lists/:list_id/todos' do
     erb :list, layout: :layout
   else
     @list[:todos] << {name: todo, completed: false}
-    @list[:todos].sort! { |a, b| a[:completed].to_s <=> b[:completed].to_s }
     session[:success] = "'#{todo}' has been added to the list."
     redirect "lists/#{@list_id}"
   end
@@ -138,4 +180,19 @@ def todo_name_error(name)
   else
     nil
   end
+end
+
+def partition_with_index(container)
+  true_values = {}
+  false_values = {}
+
+  container.each_with_index do |item, index|
+    truth_value = block_given? ? yield(item) : !!item
+    if truth_value
+      true_values[item] = index
+    else
+      false_values[item] = index
+    end
+  end
+  [true_values, false_values]
 end

@@ -1,14 +1,21 @@
-<section id="todos">
+<section id="todos" <%= list_complete?(@list) ? "class=\"complete\"" : "" %>>
   <header>
     <h2><%= @list[:name] %></h2>
     <ul>
+      <% unless list_complete?(@list) %>
+        <li>
+          <form action="/lists/<%= @list_id %>/complete_all" method="post">
+            <button class="check" type="submit">Complete all</button>
+          </form>
+        </li>
+      <% end %>
       <li>
         <a class="edit" href="<%= @list_id %>/edit">Edit List</a>
       </li>
     </ul>
   </header>
   <ul>
-    <% @list[:todos].each_with_index do |todo, index| %>
+    <% sort_todos(@list[:todos]) do |todo, index| %>
       <li <%= todo[:completed] ? "class=\"complete\"" : "" %>>
         <form action="/lists/<%= @list_id %>/todos/<%= index %>/check" method="post" class="check">
           <input type="hidden" name="completed" value="<%= !todo[:completed] %>" />
