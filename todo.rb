@@ -61,6 +61,28 @@ post '/lists/:id/delete' do
   redirect "/lists"
 end
 
+# Delete a todo list item
+post '/lists/:list_id/todos/:todo_id/delete' do
+  @list_id = params[:list_id].to_i
+  @list = session[:lists][@list_id]
+  todo_id = params[:todo_id].to_i
+  todo_name = @list[:todos][todo_id][:name]
+  @list[:todos].delete_at(todo_id)
+  session[:success] = "'#{todo_name}' has been deleted."
+  erb :list, layout: :layout
+end
+
+# update the status of a todo
+post '/lists/:list_id/todos/:todo_id/check' do
+  @list_id = params[:list_id].to_i
+  @list = session[:lists][@list_id]
+  todo = @list[:todos][params[:todo_id].to_i]
+  todo[:completed] = (params[:completed] == "true" ? true : false)
+  session[:success] = "'#{todo[:name]}' has been updated."
+  @list[:todos].sort! { |a, b| a[:completed].to_s <=> b[:completed].to_s }
+  redirect "/lists/#{@list_id}"
+end
+
 # add a todo list item
 post '/lists/:list_id/todos' do
   @list_id = params[:list_id].to_i
@@ -72,6 +94,7 @@ post '/lists/:list_id/todos' do
     erb :list, layout: :layout
   else
     @list[:todos] << {name: todo, completed: false}
+    @list[:todos].sort! { |a, b| a[:completed].to_s <=> b[:completed].to_s }
     session[:success] = "'#{todo}' has been added to the list."
     redirect "lists/#{@list_id}"
   end
