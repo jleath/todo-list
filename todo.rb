@@ -16,21 +16,17 @@ end
 
 helpers do
   def sort_lists(lists, &block)
-    complete_lists, incomplete_lists = partition_with_index(lists) do |list|
-      list_complete?(list)
-    end
+    complete, incomplete = lists.partition { |list| list_complete?(list) }
 
-    incomplete_lists.each(&block)
-    complete_lists.each(&block)
+    incomplete.each(&block)
+    complete.each(&block)
   end
 
   def sort_todos(todos, &block)
-    complete_todos, incomplete_todos = partition_with_index(todos) do |todo|
-      todo[:completed]
-    end
+    complete, incomplete = todos.partition { |todo| todo[:completed] }
 
-    incomplete_todos.keys.each(&block)
-    complete_todos.keys.each(&block)
+    incomplete.each(&block)
+    complete.each(&block)
   end
 
   def list_complete?(list)
@@ -67,7 +63,8 @@ post '/lists' do
     session[:error] = error
     erb :new_list, layout: :layout
   else
-    @lists << { name: list_name, todos: [] }
+    list_id = next_element_id(@lists)
+    @lists << { id: list_id, name: list_name, todos: [] }
     session[:success] = "The list \"#{list_name}\" has been created."
     redirect '/lists'
   end
@@ -93,7 +90,7 @@ end
 
 # Delete a todo list
 post '/lists/:id/delete' do
-  @lists.delete_at(params[:id].to_i)
+  delete_list!(@lists, params[:id].to_i)
   if env["HTTP_X_REQUESTED_WITH"] == 'XMLHttpRequest'
     puts "XHR"
     "/lists"
@@ -146,7 +143,7 @@ post '/lists/:list_id/todos' do
     session[:error] = error
     erb :list, layout: :layout
   else
-    id = next_todo_id(@list)
+    id = next_element_id(@list)
     @list[:todos] << {id: id, name: todo, completed: false}
     session[:success] = "'#{todo}' has been added to the list."
     redirect "lists/#{@list_id}"
@@ -180,7 +177,7 @@ end
 private
 
 def load_list(list_id)
-  list = @lists[list_id]
+  list = @lists.find { |list| list[:id] == list_id }
   return list if list
 
   session[:error] = "The specified list was not found."
@@ -206,29 +203,18 @@ def todo_name_error(name)
   end
 end
 
-def partition_with_index(container)
-  true_values = {}
-  false_values = {}
-
-  container.each_with_index do |item, index|
-    truth_value = block_given? ? yield(item) : !!item
-    if truth_value
-      true_values[item] = index
-    else
-      false_values[item] = index
-    end
-  end
-  [true_values, false_values]
-end
-
-def next_todo_id(list)
-  (list[:todos].map { |todo| todo[:id] }.max || 0) + 1
-end
-
 def fetch_todo(list, id)
-  list[:todos].select { |todo| todo[:id] == id }[0]
+  list[:todos].find { |todo| todo[:id] == id }
+end
+
+def next_element_id(elements)
+  (elements.map { |element| element[:id] }.max || 0) + 1
 end
 
 def delete_todo!(list, id)
   list[:todos].reject! { |todo| todo[:id] == id }
+end
+
+def delete_list!(lists, list_id)
+  lists.reject! { |list| list[:id] == list_id }
 end
