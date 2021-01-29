@@ -29,8 +29,8 @@ helpers do
       todo[:completed]
     end
 
-    incomplete_todos.each(&block)
-    complete_todos.each(&block)
+    incomplete_todos.keys.each(&block)
+    complete_todos.keys.each(&block)
   end
 
   def list_complete?(list)
@@ -94,8 +94,13 @@ end
 # Delete a todo list
 post '/lists/:id/delete' do
   @lists.delete_at(params[:id].to_i)
-  session[:success] = "The list has been deleted."
-  redirect "/lists"
+  if env["HTTP_X_REQUESTED_WITH"] == 'XMLHttpRequest'
+    puts "XHR"
+    "/lists"
+  else
+    session[:success] = "The list has been deleted."
+    redirect "/lists"
+  end
 end
 
 # Delete a todo list item
@@ -103,17 +108,21 @@ post '/lists/:list_id/todos/:todo_id/delete' do
   @list_id = params[:list_id].to_i
   @list = load_list(@list_id)
   todo_id = params[:todo_id].to_i
-  todo_name = @list[:todos][todo_id][:name]
-  @list[:todos].delete_at(todo_id)
-  session[:success] = "'#{todo_name}' has been deleted."
-  erb :list, layout: :layout
+  todo = fetch_todo(@list, todo_id)
+  delete_todo!(@list, todo_id)
+  if env["HTTP_X_REQUESTED_WITH"] == 'XMLHttpRequest'
+    204
+  else
+    session[:success] = "'#{todo[:name]}' has been deleted."
+    erb :list, layout: :layout
+  end
 end
 
 # update the status of a todo
 post '/lists/:list_id/todos/:todo_id/check' do
   @list_id = params[:list_id].to_i
   @list = load_list(@list_id)
-  todo = @list[:todos][params[:todo_id].to_i]
+  todo = fetch_todo(@list, params[:todo_id].to_i)
   todo[:completed] = (params[:completed] == "true" ? true : false)
   session[:success] = "'#{todo[:name]}' has been updated."
   redirect "/lists/#{@list_id}"
@@ -137,7 +146,8 @@ post '/lists/:list_id/todos' do
     session[:error] = error
     erb :list, layout: :layout
   else
-    @list[:todos] << {name: todo, completed: false}
+    id = next_todo_id(@list)
+    @list[:todos] << {id: id, name: todo, completed: false}
     session[:success] = "'#{todo}' has been added to the list."
     redirect "lists/#{@list_id}"
   end
@@ -209,4 +219,16 @@ def partition_with_index(container)
     end
   end
   [true_values, false_values]
+end
+
+def next_todo_id(list)
+  (list[:todos].map { |todo| todo[:id] }.max || 0) + 1
+end
+
+def fetch_todo(list, id)
+  list[:todos].select { |todo| todo[:id] == id }[0]
+end
+
+def delete_todo!(list, id)
+  list[:todos].reject! { |todo| todo[:id] == id }
 end
