@@ -4,6 +4,7 @@ require 'sinatra/content_for'
 require 'tilt/erubis'
 
 require_relative 'lib/session_persistence'
+require_relative 'lib/database_persistence'
 
 configure do
   set :erb, :escape_html => true
@@ -12,7 +13,7 @@ configure do
 end
 
 before do
-  @storage = SessionPersistence.new(session)
+  @storage = DatabasePersistence.new
 end
 
 helpers do
@@ -166,6 +167,7 @@ end
 get '/lists/:id' do
   @list_id = params[:id].to_i
   @list = load_list(@list_id)
+  p @list
   if @list.nil?
     session[:error] = "The specified list was not found."
     redirect "/lists"
