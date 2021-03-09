@@ -3,7 +3,6 @@ require 'sinatra/reloader' if development?
 require 'sinatra/content_for'
 require 'tilt/erubis'
 
-require_relative 'lib/session_persistence'
 require_relative 'lib/database_persistence'
 
 configure do

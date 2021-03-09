@@ -16,12 +16,17 @@ class DatabasePersistence
   end
 
   def find_list(list_id)
-    construct_list(@db.exec_params("SELECT * FROM lists WHERE id = $1;", [list_id])[0])
+    list_name = @db.exec_params("SELECT name FROM lists WHERE id = $1;", [list_id])[0]['name']
+    build_list(list_id, list_name)
   end
 
   def all_lists
     results = @db.exec("SELECT * FROM lists;")
-    results.map { |row| construct_list(row) }
+    results.map do |tuple|
+      list_id = tuple['id']
+      list_name = tuple['name']
+      build_list(list_id, list_name)
+    end
   end
 
   def update_list_name(list_id, new_name)
@@ -53,16 +58,18 @@ class DatabasePersistence
 
   private
 
-  def construct_list(query_result)
-    list_id = query_result['id']
-    todo_results = @db.exec_params("SELECT * FROM todos WHERE list_id = $1;", [list_id])
-    todos_list = todo_results.map do |todo_row|
-      todo_id = todo_row['id'].to_i
-      todo_name = todo_row['name']
-      todo_complete = todo_row['completed'] == 't'
-      {id: todo_id, name: todo_name, completed: todo_complete }
+  def build_list(id, name)
+    { id: id, name: name, todos: fetch_todos(id.to_i) }
+  end
+
+  def fetch_todos(list_id)
+    todo_tuples = @db.exec_params("SELECT * FROM todos WHERE list_id = $1;", [list_id])
+    todo_tuples.map do |tuple|
+      todo_id = tuple['id'].to_i
+      todo_name = tuple['name']
+      todo_complete = tuple['completed'] == 't'
+      { id: todo_id, name: todo_name, completed: todo_complete }
     end
-    { id: list_id, name: query_result['name'], todos: todos_list }
   end
 
   def setup_schema
