@@ -41,15 +41,15 @@ helpers do
   end
 
   def list_complete?(list)
-    list_size(list).positive? && num_complete(list) == list_size(list)
+    list_size(list).positive? && todos_remaining(list).zero?
   end
 
   def list_class(list)
     'complete' if list_complete?(list)
   end
 
-  def num_complete(list)
-    list[:todos].select { |todo| todo[:completed] }.size
+  def todos_remaining(list)
+    list[:todos].count { |todo| !todo[:completed] }
   end
 
   def list_size(list)
