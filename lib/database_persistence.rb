@@ -51,21 +51,21 @@ class DatabasePersistence
     query(insert_sql, todo_text, list_id)
   end
 
-  def update_todo_status(_, todo_id, new_status)
-    update_sql = 'UPDATE todos SET completed = $1 WHERE id = $2;'
-    query(update_sql, new_status, todo_id)
+  def update_todo_status(list_id, todo_id, new_status)
+    update_sql = 'UPDATE todos SET completed = $1 WHERE id = $2 AND list_id = $3;'
+    query(update_sql, new_status, todo_id, list_id)
   end
 
   def mark_all_complete(list_id)
     query('UPDATE todos SET completed = true WHERE list_id = $1;', list_id)
   end
 
-  def todo_name(_, todo_id)
-    query('SELECT name FROM todos WHERE id = $1;', todo_id)[0]['name']
+  def todo_name(list_id, todo_id)
+    query('SELECT name FROM todos WHERE id = $1 AND list_id = $2;', todo_id, list_id)[0]['name']
   end
 
-  def delete_todo(_, todo_id)
-    query('DELETE FROM todos WHERE id = $1;', todo_id)
+  def delete_todo(list_id, todo_id)
+    query('DELETE FROM todos WHERE id = $1 AND list_id = $2;', todo_id, list_id)
   end
 
   private
