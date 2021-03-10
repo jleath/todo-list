@@ -1,18 +1,10 @@
 # frozen_string_literal: true
 
 require 'pg'
+require 'pry'
 
 # A simple class that handles interactions with the todolist database.
 
-# Example:
-# storage = DatabasePersistence.new(logger)
-# current_lists = storage.all_lists
-# all_lists.each do |list_info|
-#   todos = list_info[:todos]
-#   todos.each do |todo_info|
-#     puts "#{list_info[:name]: todo_info[:name]"
-#   end
-# end
 class DatabasePersistence
   def initialize(logger)
     @logger = logger
@@ -34,14 +26,32 @@ class DatabasePersistence
   end
 
   def find_list(list_id)
-    list_name = query('SELECT name FROM lists WHERE id = $1;', list_id)[0]['name']
-    build_list(list_id, list_name)
+    select_query = <<~SQL
+      SELECT lists.*,
+             count(todos.id) as todos_count,
+             count(NULLIF(todos.completed, true)) as todos_remaining_count
+      FROM lists LEFT OUTER JOIN todos ON lists.id = todos.list_id
+      WHERE lists.id = $1
+      GROUP BY lists.id
+    SQL
+    list_info = query(select_query, list_id)[0]
+    list = build_list(list_info)
+    list[:todos] = fetch_todos(list_info['id'].to_i)
+    list
   end
 
   def all_lists
-    list_info = query('SELECT * FROM lists;')
-    list_info.map do |list_tuple|
-      build_list(list_tuple['id'], list_tuple['name'])
+    select_all_query = <<~SQL
+      SELECT lists.*, 
+             count(todos.id) as todos_count, 
+             count(NULLIF(todos.completed, true)) as todos_remaining_count
+      FROM lists LEFT OUTER JOIN todos ON lists.id = todos.list_id
+      GROUP BY lists.id
+      ORDER BY lists.name;
+    SQL
+    todo_list_info = query(select_all_query)
+    todo_list_info.map do |tuple|
+      build_list(tuple)
     end
   end
 
@@ -78,8 +88,11 @@ class DatabasePersistence
 
   private
 
-  def build_list(id, name)
-    { id: id, name: name, todos: fetch_todos(id.to_i) }
+  def build_list(list_info)
+    { id: list_info['id'].to_i,
+      name: list_info['name'],
+      todos_count: list_info['todos_count'].to_i,
+      todos_remaining_count: list_info['todos_remaining_count'].to_i }
   end
 
   def fetch_todos(list_id)
@@ -102,7 +115,7 @@ class DatabasePersistence
   end
 
   def query(statement, *params)
-    @logger.info("#{statement}: #{params}".gsub("\n", ' '))
+    @logger.info("#{statement}: #{params}".gsub(/\s+/, ' '))
     @db.exec(statement, params)
   end
 end

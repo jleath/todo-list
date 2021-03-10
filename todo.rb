@@ -49,11 +49,11 @@ helpers do
   end
 
   def todos_remaining(list)
-    list[:todos].count { |todo| !todo[:completed] }
+    list[:todos_remaining_count]
   end
 
   def list_size(list)
-    list[:todos].size
+    list[:todos_count]
   end
 end
 
@@ -176,7 +176,6 @@ end
 get '/lists/:id' do
   @list_id = params[:id].to_i
   @list = load_list(@list_id)
-  p @list
   if @list.nil?
     session[:error] = 'The specified list was not found.'
     redirect '/lists'
