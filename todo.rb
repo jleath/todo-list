@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'sinatra'
 require 'sinatra/reloader' if development?
 require 'sinatra/content_for'
@@ -6,7 +8,7 @@ require 'tilt/erubis'
 require_relative 'lib/database_persistence'
 
 configure do
-  set :erb, :escape_html => true
+  set :erb, escape_html: true
   enable :sessions
   set :session_secret, 'secret'
 end
@@ -31,11 +33,11 @@ helpers do
   end
 
   def list_complete?(list)
-    list_size(list) > 0 && num_complete(list) == list_size(list)
+    list_size(list).positive? && num_complete(list) == list_size(list)
   end
 
   def list_class(list)
-    "complete" if list_complete?(list)
+    'complete' if list_complete?(list)
   end
 
   def num_complete(list)
@@ -65,7 +67,7 @@ post '/lists' do
     session[:error] = error
     erb :new_list, layout: :layout
   else
-    @storage.create_new_list(list_name);
+    @storage.create_new_list(list_name)
     session[:success] = "The list \"#{list_name}\" has been created."
     redirect '/lists'
   end
@@ -82,7 +84,7 @@ post '/lists/:id' do
     erb :edit_list, layout: :layout
   else
     @storage.update_list_name(@list_id, list_name)
-    session[:success] = "The list has been updated."
+    session[:success] = 'The list has been updated.'
     redirect "/lists/#{@list_id}"
   end
 end
@@ -90,11 +92,11 @@ end
 # Delete a todo list
 post '/lists/:id/delete' do
   @storage.delete_list(params[:id].to_i)
-  session[:success] = "The list has been deleted."
-  if env["HTTP_X_REQUESTED_WITH"] == 'XMLHttpRequest'
-    "/lists"
+  session[:success] = 'The list has been deleted.'
+  if env['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest'
+    '/lists'
   else
-    redirect "/lists"
+    redirect '/lists'
   end
 end
 
@@ -103,11 +105,11 @@ post '/lists/:list_id/todos/:todo_id/delete' do
   @list_id = params[:list_id].to_i
   @list = load_list(@list_id)
   todo_id = params[:todo_id].to_i
-  todo_name = @storage.todo_name(@list_id, todo_id) 
+  todo_name = @storage.todo_name(@list_id, todo_id)
 
   @storage.delete_todo(@list_id, todo_id)
 
-  if env["HTTP_X_REQUESTED_WITH"] == 'XMLHttpRequest'
+  if env['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest'
     status 204
   else
     session[:success] = "'#{todo_name}' has been deleted."
@@ -137,7 +139,7 @@ post '/lists/:list_id/complete_all' do
 
   @storage.mark_all_complete(@list_id)
 
-  session[:success] = "All todos have been completed."
+  session[:success] = 'All todos have been completed.'
   redirect "/lists/#{@list_id}"
 end
 
@@ -168,8 +170,8 @@ get '/lists/:id' do
   @list = load_list(@list_id)
   p @list
   if @list.nil?
-    session[:error] = "The specified list was not found."
-    redirect "/lists"
+    session[:error] = 'The specified list was not found.'
+    redirect '/lists'
   else
     erb :list, layout: :layout
   end
@@ -188,8 +190,8 @@ def load_list(list_id)
   list = @storage.find_list(list_id)
   return list if list
 
-  session[:error] = "The specified list was not found."
-  redirect "/lists"
+  session[:error] = 'The specified list was not found.'
+  redirect '/lists'
 end
 
 # Return an error message if list_name is invalid. Otherwise, return nil.
@@ -198,15 +200,11 @@ def list_name_error(name)
     'The list name must be between 1 and 100 characters in length.'
   elsif @storage.all_lists.any? { |list| list[:name] == name }
     'The list name must be unique.'
-  else
-    nil
   end
 end
 
 def todo_name_error(name)
-  if !(1..100).cover?(name.size)
-    'The todo name must be between 1 and 100 characters in length.'
-  else
-    nil
-  end
+  return nil if (1..100).cover?(name.size)
+
+  'The todo name must be between 1 and 100 characters in length.'
 end
