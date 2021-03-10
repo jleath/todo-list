@@ -17,8 +17,7 @@ class DatabasePersistence
   end
 
   def create_new_list(list_name)
-    insert_sql = 'INSERT INTO lists (name) VALUES ($1);'
-    query(insert_sql, list_name)
+    query('INSERT INTO lists (name) VALUES ($1);', list_name)
   end
 
   def delete_list(list_id)
@@ -32,12 +31,9 @@ class DatabasePersistence
              count(NULLIF(todos.completed, true)) as todos_remaining_count
       FROM lists LEFT OUTER JOIN todos ON lists.id = todos.list_id
       WHERE lists.id = $1
-      GROUP BY lists.id
+      GROUP BY lists.id;
     SQL
-    list_info = query(select_query, list_id)[0]
-    list = build_list(list_info)
-    list[:todos] = fetch_todos(list_info['id'].to_i)
-    list
+    build_list(query(select_query, list_id)[0])
   end
 
   def all_lists
@@ -49,15 +45,11 @@ class DatabasePersistence
       GROUP BY lists.id
       ORDER BY lists.name;
     SQL
-    todo_list_info = query(select_all_query)
-    todo_list_info.map do |tuple|
-      build_list(tuple)
-    end
+    query(select_all_query).map { |tuple| build_list(tuple) }
   end
 
   def update_list_name(list_id, new_name)
-    update_sql = 'UPDATE lists SET name = $1 WHERE id = $2;'
-    query(update_sql, new_name, list_id)
+    query('UPDATE lists SET name = $1 WHERE id = $2;', new_name, list_id)
   end
 
   def create_new_todo(list_id, todo_text)
@@ -75,7 +67,8 @@ class DatabasePersistence
   end
 
   def todo_name(list_id, todo_id)
-    query('SELECT name FROM todos WHERE id = $1 AND list_id = $2;', todo_id, list_id)[0]['name']
+    select_sql = 'SELECT name FROM todos WHERE id = $1 AND list_id = $2;'
+    query(select_sql, todo_id, list_id)[0]['name']
   end
 
   def delete_todo(list_id, todo_id)
@@ -84,6 +77,15 @@ class DatabasePersistence
 
   def disconnect
     @db.close
+  end  
+
+  def fetch_todos(list_id)
+    todo_tuples = query('SELECT * FROM todos WHERE list_id = $1;', list_id)
+    todo_tuples.map do |todo_tuple|
+      { id: todo_tuple['id'].to_i,
+        name: todo_tuple['name'],
+        completed: todo_tuple['completed'] == 't' }
+    end
   end
 
   private
@@ -93,15 +95,6 @@ class DatabasePersistence
       name: list_info['name'],
       todos_count: list_info['todos_count'].to_i,
       todos_remaining_count: list_info['todos_remaining_count'].to_i }
-  end
-
-  def fetch_todos(list_id)
-    todo_tuples = query('SELECT * FROM todos WHERE list_id = $1;', list_id)
-    todo_tuples.map do |todo_tuple|
-      { id: todo_tuple['id'].to_i,
-        name: todo_tuple['name'],
-        completed: todo_tuple['completed'] == 't' }
-    end
   end
 
   def setup_schema

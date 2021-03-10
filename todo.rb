@@ -41,19 +41,11 @@ helpers do
   end
 
   def list_complete?(list)
-    list_size(list).positive? && todos_remaining(list).zero?
+    list[:todos_count].positive? && list[:todos_remaining_count].zero?
   end
 
   def list_class(list)
     'complete' if list_complete?(list)
-  end
-
-  def todos_remaining(list)
-    list[:todos_remaining_count]
-  end
-
-  def list_size(list)
-    list[:todos_count]
   end
 end
 
@@ -112,6 +104,7 @@ end
 post '/lists/:list_id/todos/:todo_id/delete' do
   @list_id = params[:list_id].to_i
   @list = load_list(@list_id)
+  @todos = @storage.fetch_todos(@list_id)
   todo_id = params[:todo_id].to_i
   todo_name = @storage.todo_name(@list_id, todo_id)
 
@@ -155,6 +148,7 @@ end
 post '/lists/:list_id/todos' do
   @list_id = params[:list_id].to_i
   @list = load_list(@list_id)
+  @todos = @storage.fetch_todos(@list_id)
   text = params[:todo].strip
   error = todo_name_error(text)
   if error
@@ -176,6 +170,7 @@ end
 get '/lists/:id' do
   @list_id = params[:id].to_i
   @list = load_list(@list_id)
+  @todos = @storage.fetch_todos(@list_id)
   if @list.nil?
     session[:error] = 'The specified list was not found.'
     redirect '/lists'
