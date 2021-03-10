@@ -21,6 +21,10 @@ before do
   @storage = DatabasePersistence.new(logger)
 end
 
+after do
+  @storage.disconnect
+end
+
 helpers do
   def sort_lists(lists, &block)
     complete, incomplete = lists.partition { |list| list_complete?(list) }

@@ -16,7 +16,11 @@ require 'pg'
 class DatabasePersistence
   def initialize(logger)
     @logger = logger
-    @db = PG.connect(dbname: 'todos')
+    @db = if Sinatra::Base.production?
+            PG.connect(ENV['DATABASE_URL'])
+          else
+            PG.connect(dbname: 'todos')
+          end
     setup_schema
   end
 
@@ -66,6 +70,10 @@ class DatabasePersistence
 
   def delete_todo(list_id, todo_id)
     query('DELETE FROM todos WHERE id = $1 AND list_id = $2;', todo_id, list_id)
+  end
+
+  def disconnect
+    @db.close
   end
 
   private
